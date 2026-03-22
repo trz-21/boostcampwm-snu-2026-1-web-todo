@@ -6,7 +6,7 @@
  * 엔드포인트 변경 시 이 파일만 수정하면 된다.
  */
 
-const BASE_URL = import.meta.env.VITE_API_URL;
+const BASE_URL = 'http://localhost:3001';
 
 /** GET /todos - 전체 목록 조회 */
 export const fetchTodos = async () => {

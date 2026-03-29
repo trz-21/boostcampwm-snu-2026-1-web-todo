@@ -11,7 +11,7 @@
 /**
  * todo 리스트에 이벤트 위임으로 toggle/delete 등록
  * @param {HTMLElement} listEl
- * @param {{ onToggle: (id:number)=>void, onDelete: (id:number)=>void }} handlers
+ * @param {{ onToggle: (id:string)=>void, onDelete: (id:string)=>void }} handlers
  */
 export const bindListEvents = (listEl, { onToggle, onDelete }) => {
   listEl.addEventListener('click', (event) => {

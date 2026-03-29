@@ -40,55 +40,79 @@ const todoSchema = new mongoose.Schema(
 const Todo = mongoose.model('Todo', todoSchema);
 
 /* ─── GET /todos ─── */
-app.get('/todos', (req, res) => {
-  res.json(todos);
+app.get('/todos', async (req, res) => {
+  try {
+    const todos = await Todo.find().sort({ createdAt: -1 });
+    res.json(todos);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch todos' });
+  }
 });
 
 /* ─── POST /todos ─── */
-app.post('/todos', (req, res) => {
+app.post('/todos', async (req, res) => {
   const { text } = req.body;
 
   if (!text || !text.trim()) {
     return res.status(400).json({ error: 'text is required' });
   }
 
-  const todo = {
-    id: nextId++,
-    text: text.trim(),
-    done: false,
-    createdAt: Date.now(),
-  };
-
-  todos = [todo, ...todos];
-  res.status(201).json(todo);
+  try {
+    const todo = await Todo.create({ text: text.trim() });
+    res.status(201).json(todo);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to create todo' });
+  }
 });
 
 /* ─── PATCH /todos/:id (완료 토글) ─── */
-app.patch('/todos/:id', (req, res) => {
-  const id = Number(req.params.id);
-  const target = todos.find((t) => t.id === id);
+app.patch('/todos/:id', async (req, res) => {
+  try {
+    const todo = await Todo.findById(req.params.id);
 
-  if (!target) {
-    return res.status(404).json({ error: 'todo not found' });
+    if (!todo) {
+      return res.status(404).json({ error: 'todo not found' });
+    }
+
+    todo.done = !todo.done;
+    await todo.save();
+    res.json(todo);
+  } catch (err) {
+    if (err.name === 'CastError') {
+      return res.status(404).json({ error: 'todo not found' });
+    }
+    res.status(500).json({ error: 'Failed to update todo' });
   }
-
-  target.done = !target.done;
-  res.json(target);
 });
 
 /* ─── DELETE /todos/:id ─── */
-app.delete('/todos/:id', (req, res) => {
-  const id = Number(req.params.id);
-  const exists = todos.some((t) => t.id === id);
+app.delete('/todos/:id', async (req, res) => {
+  try {
+    const result = await Todo.findByIdAndDelete(req.params.id);
 
-  if (!exists) {
-    return res.status(404).json({ error: 'todo not found' });
+    if (!result) {
+      return res.status(404).json({ error: 'todo not found' });
+    }
+
+    res.status(204).send();
+  } catch (err) {
+    if (err.name === 'CastError') {
+      return res.status(404).json({ error: 'todo not found' });
+    }
+    res.status(500).json({ error: 'Failed to delete todo' });
   }
-
-  todos = todos.filter((t) => t.id !== id);
-  res.status(204).send();
 });
 
-app.listen(PORT, () => {
-  console.log(`Todo API server running at http://localhost:${PORT}`);
-});
+/* ─── MongoDB 연결 후 서버 시작 ─── */
+mongoose
+  .connect(process.env.MONGO_URI)
+  .then(() => {
+    console.log('MongoDB connected');
+    app.listen(PORT, () => {
+      console.log(`Todo API server running at http://localhost:${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error('MongoDB connection failed:', err.message);
+    process.exit(1);
+  });
